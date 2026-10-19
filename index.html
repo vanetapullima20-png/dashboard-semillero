@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semillero ISEG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--primary:#00403a;--accent:#2bd5c4;--accent-light:#c9f2ed;--dark:#1A1A1A;--dark2:#303030;--dark3:#454545;--gray:#bebebe;--light-gray:#e7e7e7;--bg:#f4f6f5;--card:#ffffff;--text:#1A1A1A;--text-light:#5a6b6a;--green:#2E8B57;--red:#C0392B;--orange:#E67E22;--gold:#D4A843;--male:#00403a;--female:#2bd5c4;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+.header{background:linear-gradient(135deg,var(--dark),var(--dark2));padding:14px 24px;display:flex;align-items:center;gap:12px;}
+.header .logo{height:30px;}.header h1{color:#fff;font-size:17px;font-weight:700;}.header .sub{color:var(--gray);font-size:10px;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.header-status{color:var(--gray);font-size:10px;}.header-status.ok{color:var(--accent);}
+.admin-btn{padding:5px 12px;border-radius:5px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:10px;font-weight:600;cursor:pointer;}
+.admin-btn.out{border-color:#FF7B7B;color:#FF7B7B;}
+.tab-nav{background:var(--dark2);display:flex;gap:0;border-bottom:2px solid var(--accent);}
+.tab-nav button{background:transparent;border:none;color:var(--gray);padding:9px 18px;font-size:11px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit;}
+.tab-nav button:hover{color:#fff;}.tab-nav button.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--dark3);}
+.tab-s{display:none;}.tab-s.active{display:block;}
+.layout{display:flex;min-height:calc(100vh - 90px);}
+.sidebar{width:200px;background:var(--dark2);padding:14px;flex-shrink:0;overflow-y:auto;}
+.sidebar h3{color:var(--accent);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;}
+.f-label{color:var(--accent);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
+.f-select{width:100%;padding:6px 8px;border-radius:5px;border:1px solid var(--dark3);background:var(--dark);color:#fff;font-size:11px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg fill='%232bd5c4' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;background-size:14px;padding-right:24px;}
+.btn-reset{width:100%;padding:7px;border-radius:5px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:10px;font-weight:600;cursor:pointer;margin-top:8px;}
+@media(max-width:900px){.layout{flex-direction:column;}.sidebar{width:100%;display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;}.sidebar h3{width:100%;}.f-label+.f-select{min-width:120px;flex:1;}}
+.main{flex:1;padding:14px 18px;max-width:1100px;overflow-x:hidden;}
+.kpi-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.kpi{background:var(--card);border-radius:8px;padding:12px;box-shadow:0 1px 6px rgba(0,0,0,0.05);flex:1 1 130px;min-width:120px;border-left:3px solid var(--primary);}
+.kpi-l{font-size:9px;color:var(--text-light);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;}
+.kpi-v{font-size:24px;font-weight:800;margin-top:2px;}.kpi-s{font-size:10px;color:var(--text-light);margin-top:1px;}
+.kpi-g{font-size:10px;margin-top:1px;}.kpi-g .m{color:var(--male);font-weight:700;}.kpi-g .f{color:var(--female);font-weight:700;}
+.sec-t{font-size:13px;font-weight:700;color:var(--primary);margin:16px 0 7px;padding-bottom:4px;border-bottom:2px solid var(--accent-light);}
+.card{background:var(--card);border-radius:8px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);margin-bottom:4px;}
+.chart-w{position:relative;width:100%;}.chart-w.h180{height:180px;}.chart-w.h200{height:200px;}.chart-w.h220{height:220px;}
+.fi{display:flex;gap:4px;margin-bottom:7px;flex-wrap:wrap;align-items:center;}.fi span{font-size:10px;font-weight:600;color:var(--text-light);}
+.bf{padding:3px 9px;border-radius:12px;border:none;font-size:10px;font-weight:600;cursor:pointer;background:var(--accent-light);color:var(--primary);}.bf.active{background:var(--primary);color:#fff;}
+.ft{font-size:11px;font-weight:700;color:var(--primary);margin-left:6px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}@media(max-width:768px){.grid-2{grid-template-columns:1fr;}}
+.comp-t{width:100%;border-collapse:collapse;font-size:10px;}.comp-t thead tr{background:var(--primary);color:#fff;}.comp-t th{padding:7px 8px;text-align:center;font-size:9px;font-weight:600;}
+.comp-t td{padding:6px 8px;text-align:center;}.comp-t tbody tr:nth-child(even){background:#f0f7f6;}.comp-t .big{font-weight:700;font-size:14px;}
+.comp-t .best{color:var(--green);}.comp-t .best-tag{font-size:8px;color:var(--green);font-weight:600;}
+.comp-t .total-row{background:var(--primary)!important;color:#fff;font-weight:700;}.comp-t .total-row td{font-size:13px;}
+.bt-tbl{width:100%;border-collapse:collapse;font-size:10px;}.bt-tbl th{background:var(--primary);color:#fff;padding:6px;text-align:left;font-size:9px;font-weight:500;white-space:nowrap;}
+.bt-tbl td{padding:5px 6px;border-bottom:0.5px solid var(--light-gray);white-space:nowrap;}.bt-tbl tr:nth-child(even){background:#f0f7f6;}
+.bt-btn{padding:3px 7px;border-radius:4px;border:none;background:var(--accent);color:var(--dark);font-size:9px;font-weight:600;cursor:pointer;}
+.bt-del{padding:3px 7px;border-radius:4px;border:none;background:var(--red);color:#fff;font-size:9px;font-weight:600;cursor:pointer;margin-left:3px;}
+.sum-cards{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;cursor:pointer;}
+.sum-c{background:var(--card);border:0.5px solid var(--light-gray);border-radius:8px;padding:8px 12px;flex:1;min-width:95px;border-left:3px solid var(--gray);transition:0.15s;}
+.sum-c:hover{box-shadow:0 2px 8px rgba(0,0,0,0.1);}.sum-c.sel{border-color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+.sum-c .n{font-size:20px;font-weight:700;}.sum-c .l{font-size:9px;color:var(--text-light);}
+.modal-o{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:2000;justify-content:center;align-items:center;}
+.modal-o.show{display:flex;}.modal-b{background:var(--dark2);border:1px solid var(--accent);border-radius:10px;padding:20px;width:360px;max-width:90vw;}
+.modal-b h3{color:var(--accent);margin-bottom:14px;font-size:15px;}
+.m-input{width:100%;padding:8px;border-radius:5px;border:1px solid var(--dark3);background:var(--dark);color:#fff;font-size:12px;margin-bottom:8px;}
+.m-row{display:flex;gap:8px;margin-bottom:7px;align-items:center;}.m-row label{color:var(--gray);font-size:10px;min-width:70px;}
+.m-row select,.m-row input{flex:1;padding:5px;border-radius:4px;border:1px solid var(--dark3);background:var(--dark);color:#fff;font-size:11px;}
+.m-acts{display:flex;gap:6px;margin-top:10px;}
+.m-err{color:#FF7B7B;font-size:10px;margin-top:5px;display:none;}
+.hist-tbl{width:100%;border-collapse:collapse;font-size:11px;}.hist-tbl th{background:var(--primary);color:#fff;padding:8px;text-align:center;font-size:10px;}.hist-tbl th:first-child{text-align:left;}
+.hist-tbl td{padding:7px 8px;text-align:center;border-bottom:0.5px solid var(--light-gray);}.hist-tbl td:first-child{text-align:left;font-weight:600;}
+.hist-tbl tr:nth-child(even){background:#f0f7f6;}.hist-num{font-weight:700;font-size:12px;}
+.hist-click{cursor:pointer;text-decoration:underline;color:var(--primary);}.hist-click:hover{color:var(--accent);}
+.detail-list{background:var(--accent-light);border-radius:6px;padding:8px 12px;margin:4px 0 8px;font-size:10px;}
+.detail-list div{padding:2px 0;border-bottom:0.5px solid rgba(0,64,58,0.15);}.detail-list div:last-child{border:none;}
+.upload-zone{border:2px dashed var(--dark3);border-radius:8px;padding:16px;text-align:center;cursor:pointer;color:var(--gray);font-size:12px;}.upload-zone:hover{border-color:var(--accent);}
+.upload-zone input{display:none;}.upload-p{margin-top:6px;font-size:10px;color:var(--accent);display:none;}.upload-p.show{display:block;}
+.admin-panel{display:none;background:var(--dark);border:1px solid var(--accent);border-radius:8px;padding:12px;margin-bottom:10px;}.admin-panel.show{display:block;}
+.admin-panel h4{color:var(--accent);font-size:12px;margin-bottom:8px;}
+.err-ban{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:11px;color:#856404;display:none;text-align:center;margin-bottom:8px;}
+.loading{display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,64,58,0.9);z-index:3000;justify-content:center;align-items:center;flex-direction:column;gap:10px;}
+.loading.hide{display:none;}.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:sp 0.7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}.loading p{color:#fff;font-size:13px;font-weight:600;}
+.footer{text-align:center;padding:12px 0 6px;color:var(--text-light);font-size:9px;}
+</style>
+</head>
+<body>
+<div class="loading" id="loader"><div class="spinner"></div><p>Cargando datos...</p></div>
+<div class="header">
+  <img class="logo" src="data:image/png;base64,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" alt="ISEG">
+  <div><h1>Semillero</h1><div class="sub">Programa de Desarrollo de Talento</div></div>
+  <div class="header-right">
+    <span class="header-status" id="hStatus">Cargando...</span>
+    <button class="admin-btn" id="loginBtn" onclick="showLogin()">🔑 Admin</button>
+    <button class="admin-btn out" id="logoutBtn" onclick="doLogout()" style="display:none">Cerrar sesión</button>
+  </div>
+</div>
+<div class="tab-nav">
+  <button class="active" onclick="showTab('dash',this)">Dashboard</button>
+  <button id="tabBT" style="display:none" onclick="showTab('bt',this)">Banco de talento</button>
+  <button id="tabLog" style="display:none" onclick="showTab('log',this)">Cambios recientes</button>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-o" id="loginModal"><div class="modal-b">
+  <h3>🔐 Acceso</h3>
+  <input class="m-input" type="email" id="lEmail" placeholder="Correo electrónico">
+  <input class="m-input" type="password" id="lPass" placeholder="Contraseña">
+  <div class="m-err" id="lErr"></div>
+  <div class="m-acts"><button class="admin-btn" onclick="doLogin()">Ingresar</button><button class="admin-btn out" onclick="hideLogin()">Cancelar</button></div>
+</div></div>
+
+<!-- UPDATE STATUS MODAL -->
+<div class="modal-o" id="updModal"><div class="modal-b">
+  <h3>📋 Actualizar estado</h3>
+  <div class="m-row"><label>Persona:</label><span id="updName" style="color:#fff;font-size:11px;"></span></div>
+  <div class="m-row"><label>Nuevo estado:</label><select id="updEstado" onchange="toggleUpdFields()">
+    <option value="ASCENSO">Ascendió</option><option value="ASCENSO PENDIENTE">Ascenso pendiente</option><option value="PROCESO DE ASCENSO">Proceso de ascenso</option>
+    <option value="DESAPROBADO">No pasó entrevista</option><option value="EN EVALUACION">En proceso de evaluación</option>
+  </select></div>
+  <div id="updExtra">
+    <div class="m-row"><label>Año:</label><select id="updAnio"><option>2024</option><option>2025</option><option selected>2026</option></select></div>
+    <div class="m-row"><label>Mes:</label><select id="updMes"><option>ENERO</option><option>FEBRERO</option><option>MARZO</option><option>ABRIL</option><option>MAYO</option><option>JUNIO</option><option>JULIO</option><option>AGOSTO</option><option>SETIEMBRE</option><option>OCTUBRE</option><option>NOVIEMBRE</option><option>DICIEMBRE</option></select></div>
+  </div>
+  <div class="m-acts"><button class="admin-btn" onclick="saveUpdate()">Guardar</button><button class="admin-btn out" onclick="closeModal('updModal')">Cancelar</button></div>
+</div></div>
+
+<!-- DETAIL MODAL (for clicking month totals) -->
+<div class="modal-o" id="detModal"><div class="modal-b" style="max-height:80vh;overflow-y:auto;">
+  <h3 id="detTitle">Detalle</h3>
+  <div id="detContent"></div>
+  <div class="m-acts" style="margin-top:12px;"><button class="admin-btn out" onclick="closeModal('detModal')">Cerrar</button></div>
+</div></div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebarEl">
+    <h3>Segmentación</h3>
+    <div class="f-label">Año</div><select class="f-select" id="fYear" onchange="applyFilters()"><option value="Todos">Todos</option></select>
+    <div class="f-label">Tipo de programa</div><select class="f-select" id="fTipo" onchange="applyFilters()"><option value="Todos">Todos</option></select>
+    <div class="f-label">Estado</div><select class="f-select" id="fEstado" onchange="applyFilters()"><option value="Todos">Todos</option><option value="ACTIVO">Activos</option><option value="CESADO">Cesados</option></select>
+    <div class="f-label">Edición</div><select class="f-select" id="fEdicion" onchange="applyFilters()"><option value="Todos">Todos</option></select>
+    <div class="f-label">Estatus</div><select class="f-select" id="fEstatus" onchange="applyFilters()"><option value="Todos">Todos</option></select>
+    <div class="f-label">Mes</div><select class="f-select" id="fMes" onchange="applyFilters()"><option value="Todos">Todos</option></select>
+    <div class="f-label">Sexo</div><select class="f-select" id="fSexo" onchange="applyFilters()"><option value="Todos">Todos</option><option value="MASCULINO">Masculino</option><option value="FEMENINO">Femenino</option></select>
+    <button class="btn-reset" onclick="resetFilters()">↻ Limpiar filtros</button>
+  </aside>
+
+  <div class="main">
+    <div class="err-ban" id="errBan"></div>
+    <div class="admin-panel" id="adminPanel">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:250px;">
+          <h4 style="color:var(--accent);font-size:11px;margin-bottom:6px;">📊 Data general (Dashboard)</h4>
+          <div class="upload-zone" onclick="document.getElementById('excelIn').click()">📄 Excel Semillero general<br><span style="font-size:9px;color:var(--dark3)">Hoja "Semillero 1,2,3,4"</span>
+            <input type="file" id="excelIn" accept=".xlsx,.xls" onchange="handleUpload(this)">
+          </div><div class="upload-p" id="uploadP"></div>
+        </div>
+        <div style="flex:1;min-width:250px;">
+          <h4 style="color:var(--accent);font-size:11px;margin-bottom:6px;">👥 Banco de talento</h4>
+          <div class="upload-zone" onclick="document.getElementById('btExcelIn').click()">📄 Excel Banco de Talento<br><span style="font-size:9px;color:var(--dark3)">Hoja "DATA"</span>
+            <input type="file" id="btExcelIn" accept=".xlsx,.xls" onchange="handleBTUpload(this)">
+          </div><div class="upload-p" id="btUploadP"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD -->
+    <div class="tab-s active" id="tab-dash">
+      <div class="kpi-row">
+        <div class="kpi" style="border-left-color:var(--primary)"><div class="kpi-l">Total inscritos</div><div class="kpi-v" style="color:var(--primary)" id="k1">—</div><div class="kpi-s">Todas las ediciones</div></div>
+        <div class="kpi" style="border-left-color:var(--green)"><div class="kpi-l">Total ascensos</div><div class="kpi-v" style="color:var(--green)" id="k2">—</div><div class="kpi-g" id="k2g"></div></div>
+        <div class="kpi" style="border-left-color:var(--accent)"><div class="kpi-l">Banco de talento</div><div class="kpi-v" style="color:var(--accent)" id="k3">—</div><div class="kpi-g" id="k3g"></div></div>
+        <div class="kpi" style="border-left-color:var(--orange)"><div class="kpi-l">Eficacia perm. pendientes</div><div class="kpi-v" style="color:var(--orange)" id="k4">—</div><div class="kpi-s" id="k4s"></div></div>
+        <div class="kpi" style="border-left-color:var(--gold)"><div class="kpi-l">Eficacia perm. ascendidos</div><div class="kpi-v" style="color:var(--gold)" id="k5">—</div><div class="kpi-s" id="k5s"></div></div>
+        <div class="kpi" style="border-left-color:var(--male)"><div class="kpi-l">Ascensos masculino</div><div class="kpi-v" style="color:var(--male)" id="k6">—</div><div class="kpi-s" id="k6s"></div></div>
+        <div class="kpi" style="border-left-color:var(--female)"><div class="kpi-l">Ascensos femenino</div><div class="kpi-v" style="color:var(--accent)" id="k7">—</div><div class="kpi-s" id="k7s"></div></div>
+        <div class="kpi" style="border-left-color:var(--dark3)"><div class="kpi-l">Meta mensual</div><div class="kpi-v" style="color:var(--dark3)">15</div><div class="kpi-s">Meta anual: 180</div></div>
+      </div>
+      <h3 class="sec-t">Participantes por edición y sexo</h3><div class="card"><div class="chart-w h180"><canvas id="cPart"></canvas></div></div>
+      <h3 class="sec-t">Inscritos por sexo y edición</h3><div class="card" style="overflow-x:auto"><table class="comp-t"><thead><tr><th>Edición</th><th>Total</th><th>Masculino</th><th>Femenino</th><th>% Masc.</th><th>% Fem.</th></tr></thead><tbody id="compB"></tbody></table></div>
+      <h3 class="sec-t">Ascensos por año</h3><div class="card"><div class="fi"><span>Estado:</span><button class="bf active" onclick="setAE('Todos',this)">Todos</button><button class="bf" onclick="setAE('Activos',this)">Activos</button><button class="bf" onclick="setAE('Cesados',this)">Cesados</button><span class="ft" id="ayTot"></span></div><div class="chart-w h200"><canvas id="cAY"></canvas></div></div>
+      <h3 class="sec-t">Ascensos por mes y meta</h3><div class="card"><div class="fi" id="fAM"></div><div class="chart-w h220"><canvas id="cAM"></canvas></div></div>
+      <div class="grid-2">
+        <div><h3 class="sec-t">Pendientes por sexo y edición</h3><div class="card"><div class="chart-w h200"><canvas id="cPend"></canvas></div></div></div>
+        <div><h3 class="sec-t">Ascensos por provincia (top 10)</h3><div class="card"><div class="chart-w h200"><canvas id="cProv"></canvas></div></div></div>
+      </div>
+      <h3 class="sec-t">Movimientos por mes</h3><div class="card"><div class="fi" id="fMov"></div><div class="chart-w h220"><canvas id="cMov"></canvas></div></div>
+    </div>
+
+    <!-- TAB: BANCO DE TALENTO -->
+    <div class="tab-s" id="tab-bt">
+      <div class="sum-cards" id="btSumCards"></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <input type="text" id="btQ" placeholder="🔍 Buscar por DNI o nombre..." oninput="renderBT()" style="flex:1;min-width:180px;padding:6px 10px;border:0.5px solid var(--light-gray);border-radius:5px;font-size:11px;">
+        <select id="btSF" onchange="renderBT()" style="padding:6px;border:0.5px solid var(--light-gray);border-radius:5px;font-size:10px;">
+          <option value="Todos">Todos los estados</option><option value="APROBO ENTREVISTA ATH">Aprobó entrevista ATH</option>
+          <option value="PROCESO DE ASCENSO">Proceso de ascenso</option><option value="ASCENSO">Ascendió</option><option value="ASCENSO PENDIENTE">Ascenso pendiente</option>
+          <option value="EN EVALUACION">En evaluación</option><option value="DESAPROBADO">No pasó entrevista</option>
+        </select>
+      </div>
+      <div class="card" style="overflow-x:auto"><div style="max-height:450px;overflow-y:auto">
+        <table class="bt-tbl"><thead><tr><th>DNI</th><th>Nombre</th><th>Edición</th><th>Estado</th><th>Celular</th><th>Edad</th><th>Tipo prog.</th><th>Cargo</th><th>Cargo nuevo</th><th>Unidad</th><th>Sede</th><th>Distrito</th><th>Sexo</th><th>Estado BT</th><th>Seguimiento</th><th>Responsable</th><th>Detalle</th><th>Acción</th></tr></thead>
+        <tbody id="btBody"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- TAB: CAMBIOS RECIENTES -->
+    <div class="tab-s" id="tab-log">
+      <div class="sum-cards" id="logSumCards"></div>
+      <div class="card"><div style="max-height:500px;overflow-y:auto">
+        <table class="hist-tbl"><thead><tr><th>Mes</th><th style="color:#2E8B57">Ascendió</th><th style="color:#2bd5c4">En evaluación</th><th style="color:#E67E22">Proceso ascenso</th><th style="color:#C0392B">No pasó</th><th>Total</th></tr></thead>
+        <tbody id="histB"></tbody></table>
+      </div></div>
+      <h3 class="sec-t" style="margin-top:14px">Registro detallado</h3>
+      <div class="card"><div style="max-height:400px;overflow-y:auto">
+        <table class="bt-tbl"><thead><tr><th>Fecha</th><th>DNI</th><th>Nombre</th><th>Nuevo estado</th><th>Año</th><th>Mes</th><th>Por</th><th>Acción</th></tr></thead>
+        <tbody id="logBody"></tbody></table>
+      </div></div>
+    </div>
+
+    <div class="footer" id="footerT">Semillero ISEG</div>
+  </div>
+</div>
+<script>
+const META=15;
+const MM={'ENERO':0,'FEBRERO':1,'MARZO':2,'ABRIL':3,'MAYO':4,'JUNIO':5,'JULIO':6,'AGOSTO':7,'SETIEMBRE':8,'SEPTIEMBRE':8,'OCTUBRE':9,'NOVIEMBRE':10,'DICIEMBRE':11};
+const MS=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SET','OCT','NOV','DIC'];
+const MF=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','setiembre','octubre','noviembre','diciembre'];
+Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";Chart.defaults.font.size=10;Chart.defaults.plugins.legend.labels.usePointStyle=true;
+
+// FIREBASE
+firebase.initializeApp({apiKey:"AIzaSyDkUSmoKVyw4LXWzo6APfgD4sr6O1zBSJ4",authDomain:"dashboard-semillero.firebaseapp.com",projectId:"dashboard-semillero",storageBucket:"dashboard-semillero.firebasestorage.app",messagingSenderId:"954839100212",appId:"1:954839100212:web:79453bf1b09e5aa4959361"});
+const auth=firebase.auth(),fdb=firebase.firestore();
+
+// ROLES: admin=full access, bt=banco de talento only
+const ADMIN_EMAILS=['capacitaciones.desarrollo@pe.isegcorp.com'];
+const BT_EMAILS=[]; // agregar correo del usuario BT aquí
+
+let ALL=[],BT_ALL=[],DB=null,ch={},aEF='Todos',amYF=null,movYF=null,selIdx=null;
+let userRole=null; // null=public, 'admin', 'bt'
+
+function strip(s){return(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+function findC(h,kw){for(let i=0;i<h.length;i++){const n=strip(String(h[i]||''));for(const k of kw)if(n===k||n.indexOf(k)>=0)return i;}return-1;}
+function sortEd(a){return a.sort((x,y)=>{const na=x.replace(/\s/g,'').match(/(\d{4})\D*(\d+)/),nb=y.replace(/\s/g,'').match(/(\d{4})\D*(\d+)/);if(na&&nb)return(+na[1]*10+ +na[2])-(+nb[1]*10+ +nb[2]);return x.localeCompare(y);});}
+function showTab(n,b){document.querySelectorAll('.tab-s').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.tab-nav button').forEach(b=>b.classList.remove('active'));const t=document.getElementById('tab-'+n);if(t)t.classList.add('active');if(b)b.classList.add('active');
+  document.getElementById('sidebarEl').style.display=(n==='dash')?'':'none';
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function showLogin(){document.getElementById('loginModal').classList.add('show');}
+function hideLogin(){closeModal('loginModal');document.getElementById('lErr').style.display='none';}
+function doLogin(){const e=document.getElementById('lEmail').value,p=document.getElementById('lPass').value;
+  auth.signInWithEmailAndPassword(e,p).then(()=>hideLogin()).catch(()=>{const el=document.getElementById('lErr');el.textContent='Correo o contraseña incorrectos';el.style.display='block';});}
+function doLogout(){auth.signOut();}
+
+auth.onAuthStateChanged(u=>{
+  if(u){
+    const em=u.email.toLowerCase();
+    if(ADMIN_EMAILS.includes(em))userRole='admin';
+    else if(BT_EMAILS.includes(em))userRole='bt';
+    else userRole='admin'; // default logged in = admin for now
+  }else{userRole=null;}
+  document.getElementById('loginBtn').style.display=u?'none':'';
+  document.getElementById('logoutBtn').style.display=u?'':'none';
+  document.getElementById('adminPanel').classList.toggle('show',userRole==='admin');
+  document.getElementById('tabBT').style.display=(userRole==='admin'||userRole==='bt')?'':'none';
+  document.getElementById('tabLog').style.display=(userRole==='admin'||userRole==='bt')?'':'none';
+  if(!u){showTab('dash',document.querySelector('.tab-nav button'));}
+  else if(userRole==='bt'){showTab('bt',document.getElementById('tabBT'));}
+  if(DB){renderBT();renderSumCards();}
+  if(u)loadLog();
+});
+
+// PARSE EXCEL
+function parseXL(d){
+  const wb=XLSX.read(d,{type:'array'});
+  const ss=wb.SheetNames.filter(n=>{const s=strip(n);return s.indexOf('SEMILLERO')>=0&&/\d/.test(s);});
+  if(!ss.length)throw new Error('No se encontró hoja Semillero');
+  const w4=ss.filter(n=>n.indexOf('4')>=0);const sn=w4.length?w4[0]:ss[0];
+  const ws=wb.Sheets[sn],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}),h=rows[0];
+  const C={ed:findC(h,['EDICION DE SEMILLERO','EDICION']),dni:findC(h,['DNI']),nom:findC(h,['NOMBRES Y APELLIDOS','NOMBRES']),est:-1,tipo:findC(h,['TIPO DE PROGRAMA']),sede:findC(h,['SEDE']),sexo:findC(h,['SEXO']),cel:findC(h,['CELULAR']),cargo:findC(h,['CARGO']),cargoN:findC(h,['CARGO NUEVO']),uni:findC(h,['UNIDAD']),dist:findC(h,['DISTRITO']),ebt:-1,anio:-1,mes:-1};
+  for(let i=0;i<h.length;i++){const n=strip(String(h[i]||''));if((n==='ESTADO 1'||n==='ESTADO1')&&C.est===-1){const v=strip(String(rows[1]?.[i]||''));if(v==='ACTIVO'||v==='CESADO')C.est=i;}}
+  if(C.est===-1)for(let i=0;i<h.length;i++){const n=strip(String(h[i]||''));if(n.indexOf('ESTADO')>=0&&n.indexOf('BT')<0&&n.indexOf('2')<0){C.est=i;break;}}
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||''))==='ESTADO BT'){C.ebt=i;break;}}
+  C.anio=findC(h,['ANO ASCENSO','ANO DE ASCENSO']);C.mes=findC(h,['MES ASCENSO','MES DE ASCENSO']);
+  const recs=[];
+  for(let i=1;i<rows.length;i++){const r=rows[i];const ev=String(r[C.ed]||'').trim();if(!ev)continue;
+    recs.push({edicion:ev,dni:String(r[C.dni]||'').trim(),nombre:String(r[C.nom]||'').trim(),estado:strip(String(r[C.est]||'')),tipo:strip(String(r[C.tipo]||'')),sede:strip(String(r[C.sede]||'')),sexo:strip(String(r[C.sexo]||'')),celular:String(r[C.cel]||'').trim(),cargo:String(r[C.cargo]||'').trim(),unidad:String(r[C.uni]||'').trim(),distrito:strip(String(r[C.dist]||'')),estadoBT:strip(String(r[C.ebt]||'')),anioAsc:String(r[C.anio]||'').trim(),mesAsc:strip(String(r[C.mes]||''))});}
+  return{recs,sn};
+}
+
+// UPLOAD
+async function handleUpload(inp){const f=inp.files[0];if(!f)return;const p=document.getElementById('uploadP');p.classList.add('show');p.textContent='⏳ Procesando...';
+  try{const buf=await f.arrayBuffer();const{recs,sn}=parseXL(new Uint8Array(buf));p.textContent='⏳ Guardando...';
+    await fdb.collection('data').doc('records').set({records:JSON.stringify(recs),lastUpdated:firebase.firestore.FieldValue.serverTimestamp(),sheetName:sn,count:recs.length});
+    ALL=recs;populateFilters();applyFilters();
+    document.getElementById('hStatus').textContent='✓ '+sn+' ('+recs.length+')';document.getElementById('hStatus').className='header-status ok';
+    p.textContent='✅ '+recs.length+' registros guardados';
+  }catch(e){p.textContent='❌ '+e.message;}inp.value='';}
+
+// BT UPLOAD
+function parseBTXL(d){
+  const wb=XLSX.read(d,{type:'array'});
+  let sn=wb.SheetNames.find(n=>strip(n)==='DATA')||wb.SheetNames[0];
+  const ws=wb.Sheets[sn],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}),h=rows[0];
+  const C={ed:findC(h,['EDICION']),dni:findC(h,['DNI']),nom:findC(h,['NOMBRES Y APELLIDOS','NOMBRES']),est:findC(h,['ESTADO']),cel:findC(h,['CELULAR']),edad:findC(h,['EDAD']),tipo:findC(h,['TIPO DE PROGRAMA']),sede:findC(h,['SEDE']),dist:findC(h,['DISTRITO']),cargo:findC(h,['CARGO']),cargoN:findC(h,['CARGO NUEVO']),uni:findC(h,['UNIDAD']),sexo:findC(h,['SEXO']),ebt:-1,anio:findC(h,['ANO ASCENSO','AÑO ASCENSO']),mes:findC(h,['MES ASCENSO']),cctv:findC(h,['CON CERTIFICACION CCTV','CERTIFICACION CCTV']),seg:-1,resp:-1,obs:findC(h,['OBS']),ebt2:-1,det:-1};
+  // Find first ESTADO BT
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||''))==='ESTADO BT'){C.ebt=i;break;}}
+  // Find SEGUIMIENTO ATH
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||'')).indexOf('SEGUIMIENTO')>=0){C.seg=i;break;}}
+  // Find RESPONSABLE ATH
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||'')).indexOf('RESPONSABLE')>=0){C.resp=i;break;}}
+  // Find second ESTADO BT (after column 20)
+  let foundFirst=false;
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||''))==='ESTADO BT'){if(foundFirst){C.ebt2=i;break;}foundFirst=true;}}
+  // Find DETALLE
+  for(let i=0;i<h.length;i++){if(strip(String(h[i]||''))==='DETALLE'){C.det=i;break;}}
+
+  const recs=[];
+  for(let i=1;i<rows.length;i++){const r=rows[i];const ev=String(r[C.ed]||'').trim();if(!ev)continue;
+    const ebt2=C.ebt2>=0?String(r[C.ebt2]||'').trim():'';
+    recs.push({edicion:ev,dni:String(r[C.dni]||'').trim(),nombre:String(r[C.nom]||'').trim(),estado:strip(String(r[C.est]||'')),celular:String(r[C.cel]||'').trim(),edad:String(r[C.edad]||'').trim(),tipo:strip(String(r[C.tipo]||'')),sede:strip(String(r[C.sede]||'')),distrito:strip(String(r[C.dist]||'')),cargo:String(r[C.cargo]||'').trim(),cargoNuevo:String(r[C.cargoN]||'').trim(),unidad:String(r[C.uni]||'').trim(),sexo:strip(String(r[C.sexo]||'')),estadoBT:strip(String(r[C.ebt]||'')),anioAsc:String(r[C.anio]||'').trim(),mesAsc:strip(String(r[C.mes]||'')),cctv:String(r[C.cctv]||'').trim(),seguimiento:C.seg>=0?String(r[C.seg]||'').trim():'',responsable:C.resp>=0?String(r[C.resp]||'').trim():'',obs:String(r[C.obs]||'').trim(),estadoBT2:ebt2?strip(ebt2):'',detalle:C.det>=0?String(r[C.det]||'').trim():''});}
+  return{recs,sn};}
+
+async function handleBTUpload(inp){const f=inp.files[0];if(!f)return;const p=document.getElementById('btUploadP');p.classList.add('show');p.textContent='⏳ Procesando BT...';
+  try{const buf=await f.arrayBuffer();const{recs,sn}=parseBTXL(new Uint8Array(buf));p.textContent='⏳ Guardando...';
+    await fdb.collection('data').doc('bt_records').set({records:JSON.stringify(recs),lastUpdated:firebase.firestore.FieldValue.serverTimestamp(),sheetName:sn,count:recs.length});
+    BT_ALL=recs;renderBT();renderSumCards();
+    p.textContent='✅ BT: '+recs.length+' registros guardados';
+  }catch(e){p.textContent='❌ '+e.message;}inp.value='';}
+
+// LOAD DATA
+async function loadData(){try{const doc=await fdb.collection('data').doc('records').get();
+  if(doc.exists){const d=doc.data();ALL=JSON.parse(d.records);populateFilters();applyFilters();
+    document.getElementById('hStatus').textContent='✓ '+d.sheetName+' ('+d.count+')';document.getElementById('hStatus').className='header-status ok';
+  }else{document.getElementById('hStatus').textContent='Sin datos — ingresa como admin';document.getElementById('hStatus').className='header-status';}
+  // Load BT data
+  try{const btDoc=await fdb.collection('data').doc('bt_records').get();
+    if(btDoc.exists){BT_ALL=JSON.parse(btDoc.data().records);renderBT();renderSumCards();}
+  }catch(e){console.log('BT load:',e);}
+  document.getElementById('loader').classList.add('hide');
+}catch(e){document.getElementById('loader').classList.add('hide');document.getElementById('errBan').style.display='block';document.getElementById('errBan').textContent='Error: '+e.message;}}
+
+function populateFilters(){
+  const eds=new Set(),tipos=new Set(),years=new Set(),estatus=new Set(),meses=new Set();
+  ALL.forEach(r=>{eds.add(r.edicion);if(r.tipo)tipos.add(r.tipo);const m=r.edicion.match(/(\d{4})/);if(m)years.add(m[1]);if(r.anioAsc&&/^\d{4}$/.test(r.anioAsc))years.add(r.anioAsc);if(r.estadoBT)estatus.add(r.estadoBT);if(r.mesAsc&&MM[r.mesAsc]!==undefined)meses.add(r.mesAsc);});
+  const fill=(id,vals,fmt)=>{const el=document.getElementById(id);el.innerHTML='<option value="Todos">Todos</option>';vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=fmt?fmt(v):v;el.appendChild(o);});};
+  fill('fEdicion',sortEd([...eds]));fill('fTipo',[...tipos].sort(),v=>v.split(' ').map(w=>w.charAt(0)+w.slice(1).toLowerCase()).join(' '));
+  fill('fYear',[...years].sort());fill('fEstatus',[...estatus].sort(),v=>v.split(' ').map(w=>w.charAt(0)+w.slice(1).toLowerCase()).join(' '));
+  fill('fMes',Object.keys(MM).filter(m=>meses.has(m)).sort((a,b)=>MM[a]-MM[b]),v=>v.charAt(0)+v.slice(1).toLowerCase());
+}
+function resetFilters(){['fYear','fTipo','fEstado','fEdicion','fEstatus','fMes','fSexo'].forEach(id=>document.getElementById(id).value='Todos');applyFilters();}
+function getF(){const fy=document.getElementById('fYear').value,ft=document.getElementById('fTipo').value,fe=document.getElementById('fEstado').value,fed=document.getElementById('fEdicion').value,fes=document.getElementById('fEstatus').value,fm=document.getElementById('fMes').value,fs=document.getElementById('fSexo').value;
+  return ALL.filter(r=>{if(fed!=='Todos'&&r.edicion!==fed)return false;if(ft!=='Todos'&&r.tipo!==ft)return false;if(fe!=='Todos'&&r.estado!==fe)return false;
+    if(fy!=='Todos'){const m=r.edicion.match(/(\d{4})/);if(!m||m[1]!==fy)return false;}
+    if(fes!=='Todos'&&r.estadoBT!==fes)return false;if(fm!=='Todos'&&r.mesAsc!==fm)return false;if(fs!=='Todos'&&r.sexo!==fs)return false;return true;});}
+
+function applyFilters(){
+  const recs=getF();
+  const isBT=r=>r.estado==='ACTIVO'&&(r.estadoBT==='APROBO ENTREVISTA ATH'||r.estadoBT==='PROCESO DE ASCENSO'||r.estadoBT==='EN EVALUACION');
+  const isBTAll=r=>r.estadoBT==='APROBO ENTREVISTA ATH'||r.estadoBT==='PROCESO DE ASCENSO'||r.estadoBT==='EN EVALUACION';
+  const isAsc=r=>r.estadoBT==='ASCENSO';
+  const edS={};recs.forEach(r=>{edS[r.edicion]=true;});const edO=sortEd(Object.keys(edS));
+  const part={};edO.forEach(e=>{part[e]=0;});recs.forEach(r=>{part[r.edicion]=(part[r.edicion]||0)+1;});
+  const pG={};edO.forEach(e=>{const er=recs.filter(r=>r.edicion===e);pG[e]={M:er.filter(r=>r.sexo==='MASCULINO').length,F:er.filter(r=>r.sexo==='FEMENINO').length};});
+  const btR=recs.filter(isBT),btA=recs.filter(isBTAll),asc=recs.filter(isAsc),tI=recs.length,tA=asc.length;
+  const aM=asc.filter(r=>r.sexo==='MASCULINO').length,aF=asc.filter(r=>r.sexo==='FEMENINO').length;
+  const aAct=asc.filter(r=>r.estado==='ACTIVO').length;
+  const efP=btA.length>0?(btR.length/btA.length*100):0,efA=tA>0?(aAct/tA*100):0;
+  const aY={};asc.forEach(r=>{const y=r.anioAsc;if(!y||y==='-'||y==='PENDIENTE'||y==='')return;if(!aY[y])aY[y]={a:0,c:0};if(r.estado==='ACTIVO')aY[y].a++;else aY[y].c++;});
+  const sY=Object.keys(aY).sort();
+  const aMD={};sY.forEach(y=>{aMD[y]={M:Array(12).fill(0),F:Array(12).fill(0)};});
+  asc.forEach(r=>{const y=r.anioAsc;if(!y||!aMD[y])return;const mi=MM[r.mesAsc];if(mi!==undefined){if(r.sexo==='MASCULINO')aMD[y].M[mi]++;else aMD[y].F[mi]++;}});
+  const cD=edO.map(e=>{const er=recs.filter(r=>r.edicion===e),p=er.length,bA=er.filter(isBT),bT=er.filter(isBTAll),aE=er.filter(isAsc),aEA=aE.filter(r=>r.estado==='ACTIVO');
+    const conv=p>0?((bA.length+aE.length)/p*100):0,pA=bA.length+aEA.length,pT=bT.length+aE.length;
+    return{ed:e,part:p,bt:bA.length,btM:bA.filter(r=>r.sexo==='MASCULINO').length,btF:bA.filter(r=>r.sexo==='FEMENINO').length,asc:aE.length,ascM:aE.filter(r=>r.sexo==='MASCULINO').length,ascF:aE.filter(r=>r.sexo==='FEMENINO').length,conv,efic:pT>0?(pA/pT*100):0};});
+  const peD=edO.map(e=>{const b=recs.filter(r=>r.edicion===e&&isBT(r));return{ed:e,M:b.filter(r=>r.sexo==='MASCULINO').length,F:b.filter(r=>r.sexo==='FEMENINO').length};});
+  const prC={};asc.forEach(r=>{const s=r.sede||'SIN SEDE';prC[s]=(prC[s]||0)+1;});const prS=Object.entries(prC).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  DB={tI,part,pG,edO,btR,btA,tA,aM,aF,aAct,efP,efA,aY,sY,aMD,cD,peD,prS};
+  renderAll();
+}
+
+function renderAll(){if(!DB)return;
+  document.getElementById('k1').textContent=DB.tI.toLocaleString();
+  document.getElementById('k2').textContent=DB.tA;document.getElementById('k2g').innerHTML='<span class="m">'+DB.aM+' M</span> · <span class="f">'+DB.aF+' F</span>';
+  const btM=DB.btR.filter(r=>r.sexo==='MASCULINO').length,btF=DB.btR.filter(r=>r.sexo==='FEMENINO').length;
+  document.getElementById('k3').textContent=DB.btR.length;document.getElementById('k3g').innerHTML='<span class="m">'+btM+' M</span> · <span class="f">'+btF+' F</span>';
+  document.getElementById('k4').textContent=DB.efP.toFixed(1)+'%';document.getElementById('k4s').textContent=DB.btR.length+' act / '+DB.btA.length+' total';
+  document.getElementById('k5').textContent=DB.efA.toFixed(1)+'%';document.getElementById('k5s').textContent=DB.aAct+' act / '+DB.tA+' total';
+  const pM=DB.tA>0?(DB.aM/DB.tA*100).toFixed(1):'0',pF=DB.tA>0?(DB.aF/DB.tA*100).toFixed(1):'0';
+  document.getElementById('k6').textContent=pM+'%';document.getElementById('k6s').textContent=DB.aM+' de '+DB.tA;
+  document.getElementById('k7').textContent=pF+'%';document.getElementById('k7s').textContent=DB.aF+' de '+DB.tA;
+  rPart();rComp();rAY();rAMF();rAM();rPend();rProv();rMov();renderBT();renderSumCards();
+  document.getElementById('footerT').textContent='Semillero ISEG · '+new Date().toLocaleDateString('es-PE');
+}
+
+function rPart(){if(ch.p)ch.p.destroy();const l=DB.edO,dM=l.map(e=>DB.pG[e].M),dF=l.map(e=>DB.pG[e].F),tots=l.map(e=>DB.part[e]);
+  ch.p=new Chart(document.getElementById('cPart'),{type:'bar',data:{labels:l,datasets:[{label:'Masculino',data:dM,backgroundColor:'#00403a',barPercentage:0.5,stack:'s'},{label:'Femenino',data:dF,backgroundColor:'#2bd5c4',borderRadius:{topLeft:4,topRight:4},barPercentage:0.5,stack:'s'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#e7e7e7'}},x:{grid:{display:false}}}},
+    plugins:[{afterDatasetsDraw(c){const x=c.ctx;tots.forEach((v,i)=>{const m=c.getDatasetMeta(1).data[i];x.fillStyle='#1A1A1A';x.font='bold 11px Segoe UI';x.textAlign='center';x.fillText(v,m.x,m.y-5);});}}]});}
+
+function rComp(){const b=document.getElementById('compB');const mC=Math.max(...DB.cD.map(r=>r.conv)),mE=Math.max(...DB.cD.map(r=>r.efic));let h='';
+  DB.cD.forEach(r=>{const bc=r.conv===mC&&r.conv>0,be=r.efic===mE&&r.efic>0;const p=r.part;const pM=DB.pG[r.ed]||{M:0,F:0};const pcM=p>0?(pM.M/p*100).toFixed(1):'0',pcF=p>0?(pM.F/p*100).toFixed(1):'0';
+    h+='<tr><td style="text-align:left;font-weight:700;color:var(--primary)">'+r.ed+'</td><td class="big">'+p+'</td><td>'+pM.M+'</td><td>'+pM.F+'</td><td>'+pcM+'%</td><td>'+pcF+'%</td></tr>';});
+  h+='<tr class="total-row"><td style="text-align:left">TOTAL</td><td>'+DB.tI.toLocaleString()+'</td><td colspan="4"></td></tr>';b.innerHTML=h;}
+
+function setAE(v,btn){aEF=v;btn.parentElement.querySelectorAll('.bf').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rAY();}
+function rAY(){const y=DB.sY;let ds=[],t=0;const tots=y.map(yr=>(DB.aY[yr]||{}).a||0+(DB.aY[yr]||{}).c||0);
+  if(aEF!=='Cesados'){const d=y.map(yr=>(DB.aY[yr]||{}).a||0);ds.push({label:'Activos',data:d,backgroundColor:'#2E8B57',borderRadius:aEF==='Activos'?5:0,barPercentage:0.45,stack:'s'});t+=d.reduce((a,b)=>a+b,0);}
+  if(aEF!=='Activos'){const d=y.map(yr=>(DB.aY[yr]||{}).c||0);ds.push({label:'Cesados',data:d,backgroundColor:'#C0392B',borderRadius:5,barPercentage:0.45,stack:'s'});t+=d.reduce((a,b)=>a+b,0);}
+  document.getElementById('ayTot').textContent='Total: '+t;if(ch.ay)ch.ay.destroy();
+  const bT=y.map(yr=>{const d=DB.aY[yr]||{};return(d.a||0)+(d.c||0);});
+  ch.ay=new Chart(document.getElementById('cAY'),{type:'bar',data:{labels:y,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:'#e7e7e7'}}}},
+    plugins:[{afterDatasetsDraw(c){const x=c.ctx;const lm=c.getDatasetMeta(ds.length-1);bT.forEach((v,i)=>{if(!v)return;const m=lm.data[i];x.fillStyle='#1A1A1A';x.font='bold 11px Segoe UI';x.textAlign='center';x.fillText(v,m.x,m.y-5);});}}]});}
+
+function rAMF(){const c=document.getElementById('fAM');let h='<span>Año:</span>';DB.sY.forEach((y,i)=>{const a=i===DB.sY.length-1?' active':'';h+='<button class="bf'+a+'" onclick="setAMY(\''+y+'\',this)">'+y+'</button>';});c.innerHTML=h;amYF=DB.sY[DB.sY.length-1]||null;}
+function setAMY(y,btn){amYF=y;btn.parentElement.querySelectorAll('.bf').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rAM();}
+function rAM(){if(!amYF||!DB.aMD[amYF])return;const d=DB.aMD[amYF];const tots=d.M.map((v,i)=>v+d.F[i]);
+  if(ch.am)ch.am.destroy();ch.am=new Chart(document.getElementById('cAM'),{type:'bar',
+    data:{labels:MS,datasets:[{label:'Masculino',data:d.M,backgroundColor:'#00403a',barPercentage:0.6,stack:'s'},{label:'Femenino',data:d.F,backgroundColor:'#2bd5c4',borderRadius:{topLeft:4,topRight:4},barPercentage:0.6,stack:'s'},
+      {label:'Meta: 15',data:Array(12).fill(META),type:'line',borderColor:'#C0392B',borderDash:[5,5],borderWidth:2,pointRadius:0,fill:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#e7e7e7'}}}},
+    plugins:[{afterDatasetsDraw(c){const x=c.ctx;tots.forEach((v,i)=>{if(!v)return;const m=c.getDatasetMeta(1).data[i];x.fillStyle='#1A1A1A';x.font='bold 10px Segoe UI';x.textAlign='center';x.fillText(v,m.x,m.y-5);});}}]});}
+
+function rPend(){const l=DB.peD.map(p=>p.ed.length>10?p.ed.substring(0,10):p.ed),mD=DB.peD.map(p=>p.M),fD=DB.peD.map(p=>p.F),tots=DB.peD.map(p=>p.M+p.F);
+  if(ch.pe)ch.pe.destroy();ch.pe=new Chart(document.getElementById('cPend'),{type:'bar',
+    data:{labels:l,datasets:[{label:'Masculino',data:mD,backgroundColor:'#00403a',barPercentage:0.5,stack:'s'},{label:'Femenino',data:fD,backgroundColor:'#2bd5c4',borderRadius:{topLeft:4,topRight:4},barPercentage:0.5,stack:'s'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#e7e7e7'}}}},
+    plugins:[{afterDatasetsDraw(c){const x=c.ctx;tots.forEach((v,i)=>{if(!v)return;const m=c.getDatasetMeta(1).data[i];x.fillStyle='#1A1A1A';x.font='bold 10px Segoe UI';x.textAlign='center';x.fillText(v,m.x,m.y-5);});}}]});}
+
+function rProv(){if(ch.pr)ch.pr.destroy();if(!DB.prS.length)return;const l=DB.prS.map(p=>p[0]),d=DB.prS.map(p=>p[1]);
+  ch.pr=new Chart(document.getElementById('cProv'),{type:'bar',data:{labels:l,datasets:[{data:d,backgroundColor:'#2bd5c4',borderRadius:4,barPercentage:0.55}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#e7e7e7'}},y:{grid:{display:false}}}},
+    plugins:[{afterDatasetsDraw(c){const x=c.ctx;d.forEach((v,i)=>{const m=c.getDatasetMeta(0).data[i];x.fillStyle='#1A1A1A';x.font='bold 9px Segoe UI';x.textBaseline='middle';x.textAlign='left';x.fillText(v,m.x+3,m.y);});}}]});}
+
+function rMov(){if(!DB||!DB.sY.length)return;
+  const mD={};DB.sY.forEach(y=>{mD[y]={asc:Array(12).fill(0),apr:Array(12).fill(0),proc:Array(12).fill(0)};});
+  getF().forEach(r=>{const y=r.anioAsc;if(!y||!mD[y])return;const mi=MM[r.mesAsc];if(mi===undefined)return;
+    if(r.estadoBT==='ASCENSO')mD[y].asc[mi]++;else if(r.estadoBT==='APROBO ENTREVISTA ATH')mD[y].apr[mi]++;else if(r.estadoBT==='PROCESO DE ASCENSO')mD[y].proc[mi]++;});
+  const c=document.getElementById('fMov');let h='<span>Año:</span>';
+  DB.sY.forEach((y,i)=>{const a=i===DB.sY.length-1?' active':'';h+='<button class="bf'+a+'" onclick="setMovY(\''+y+'\',this)">'+y+'</button>';});
+  c.innerHTML=h;movYF=movYF||DB.sY[DB.sY.length-1];
+  drawMov('cMov',mD[movYF]||{asc:Array(12).fill(0),apr:Array(12).fill(0),proc:Array(12).fill(0)},'mv');}
+function setMovY(y,btn){movYF=y;btn.parentElement.querySelectorAll('.bf').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rMov();}
+function drawMov(cid,d,k){if(ch[k])ch[k].destroy();const tots=d.asc.map((v,i)=>v+d.apr[i]+d.proc[i]);
+  ch[k]=new Chart(document.getElementById(cid),{type:'bar',data:{labels:MS,datasets:[
+    {label:'Ascensos',data:d.asc,backgroundColor:'#2E8B57',barPercentage:0.6,stack:'s'},
+    {label:'Aprobó entrevista',data:d.apr,backgroundColor:'#2bd5c4',barPercentage:0.6,stack:'s'},
+    {label:'Proceso ascenso',data:d.proc,backgroundColor:'#E67E22',borderRadius:{topLeft:4,topRight:4},barPercentage:0.6,stack:'s'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#e7e7e7'}}}},
+  plugins:[{afterDatasetsDraw(c){const x=c.ctx;tots.forEach((v,i)=>{if(!v)return;const m=c.getDatasetMeta(2).data[i];x.fillStyle='#1A1A1A';x.font='bold 9px Segoe UI';x.textAlign='center';x.fillText(v,m.x,m.y-4);});}}]});}
+
+// BANCO DE TALENTO
+function getBTF(){const q=(document.getElementById('btQ')?.value||'').toUpperCase(),sf=document.getElementById('btSF')?.value||'Todos';
+  const src=BT_ALL.length?BT_ALL:ALL;
+  return src.filter(r=>{
+    if(sf!=='Todos'){const st=r.estadoBT2||r.estadoBT;if(st!==sf)return false;}
+    if(q&&!(r.dni+' '+r.nombre+' '+r.edicion+' '+r.unidad+' '+r.cargo+' '+r.sede+' '+(r.seguimiento||'')).toUpperCase().includes(q))return false;return true;});}
+
+function renderSumCards(){
+  const src=BT_ALL.length?BT_ALL:ALL.filter(r=>r.estado==='ACTIVO'&&(r.estadoBT==='APROBO ENTREVISTA ATH'||r.estadoBT==='PROCESO DE ASCENSO'||r.estadoBT==='EN EVALUACION'||r.estadoBT==='ASCENSO'||r.estadoBT==='DESAPROBADO'));
+  const counts={apr:0,proc:0,eval:0,asc:0,ascP:0};
+  src.forEach(r=>{const st=r.estadoBT2||r.estadoBT;if(st==='APROBO ENTREVISTA ATH')counts.apr++;else if(st==='PROCESO DE ASCENSO')counts.proc++;else if(st==='EN EVALUACION')counts.eval++;else if(st==='ASCENSO')counts.asc++;else if(st==='ASCENSO PENDIENTE')counts.ascP++;});
+  const el=document.getElementById('btSumCards');if(!el)return;
+  el.innerHTML='<div class="sum-c" style="border-left-color:#2bd5c4" onclick="filterBTSum(\'APROBO ENTREVISTA ATH\')"><div class="n" style="color:#2bd5c4">'+counts.apr+'</div><div class="l">Aprobó entrevista</div></div>'+
+    '<div class="sum-c" style="border-left-color:#E67E22" onclick="filterBTSum(\'PROCESO DE ASCENSO\')"><div class="n" style="color:#E67E22">'+counts.proc+'</div><div class="l">Proceso ascenso</div></div>'+
+    '<div class="sum-c" style="border-left-color:#D4A843" onclick="filterBTSum(\'ASCENSO PENDIENTE\')"><div class="n" style="color:#D4A843">'+counts.ascP+'</div><div class="l">Ascenso pendiente</div></div>'+
+    '<div class="sum-c" style="border-left-color:#2E8B57" onclick="filterBTSum(\'ASCENSO\')"><div class="n" style="color:#2E8B57">'+counts.asc+'</div><div class="l">Ascendió</div></div>'+
+    '<div class="sum-c" style="border-left-color:#1A1A1A" onclick="filterBTSum(\'Todos\')"><div class="n">'+src.length+'</div><div class="l">Total en banco</div></div>';
+}
+function filterBTSum(v){document.getElementById('btSF').value=v;renderBT();}
+
+function renderBT(){const src=BT_ALL.length?BT_ALL:ALL;if(!src.length)return;const f=getBTF();
+  const stC={'APROBO ENTREVISTA ATH':'#2bd5c4','PROCESO DE ASCENSO':'#E67E22','EN EVALUACION':'#D4A843','ASCENSO':'#2E8B57','ASCENSO PENDIENTE':'#D4A843','DESAPROBADO':'#C0392B'};
+  let h='';f.forEach((r,i)=>{const st=r.estadoBT2||r.estadoBT;
+    h+='<tr><td style="font-size:9px">'+r.dni+'</td><td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis">'+r.nombre+'</td><td>'+r.edicion+'</td>';
+    h+='<td><span style="color:'+(r.estado==='ACTIVO'?'var(--green)':'var(--red)')+';font-weight:600">'+r.estado+'</span></td>';
+    h+='<td style="font-size:9px">'+r.celular+'</td><td style="font-size:9px">'+(r.edad||'')+'</td><td style="font-size:9px">'+r.tipo+'</td>';
+    h+='<td style="font-size:9px;max-width:110px;overflow:hidden;text-overflow:ellipsis">'+r.cargo+'</td>';
+    h+='<td style="font-size:9px;max-width:110px;overflow:hidden;text-overflow:ellipsis">'+(r.cargoNuevo||'')+'</td>';
+    h+='<td style="font-size:9px;max-width:110px;overflow:hidden;text-overflow:ellipsis">'+r.unidad+'</td>';
+    h+='<td>'+r.sede+'</td><td>'+r.distrito+'</td><td>'+r.sexo+'</td>';
+    h+='<td><span style="color:'+(stC[st]||'var(--text)')+';font-weight:600">'+st+'</span></td>';
+    h+='<td style="font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis">'+(r.seguimiento||'')+'</td>';
+    h+='<td style="font-size:9px">'+(r.responsable||'')+'</td>';
+    h+='<td style="font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis">'+(r.detalle||'')+'</td>';
+    h+='<td><button class="bt-btn" onclick="openUpd('+i+')">Actualizar</button></td></tr>';});
+  if(!f.length)h='<tr><td colspan="18" style="text-align:center;color:var(--text-light);padding:16px">Sin registros</td></tr>';
+  document.getElementById('btBody').innerHTML=h;}
+
+function toggleUpdFields(){document.getElementById('updExtra').style.display=document.getElementById('updEstado').value==='ASCENSO'?'':'none';}
+function openUpd(i){selIdx=i;const f=getBTF();const r=f[i];document.getElementById('updName').textContent=r.dni+' — '+r.nombre;
+  document.getElementById('updEstado').value='ASCENSO';toggleUpdFields();document.getElementById('updModal').classList.add('show');}
+
+async function saveUpdate(){const f=getBTF();const r=f[selIdx];const nE=document.getElementById('updEstado').value;
+  const src=BT_ALL.length?BT_ALL:ALL;
+  const oi=src.indexOf(r);
+  if(oi>=0){
+    if(BT_ALL.length){src[oi].estadoBT2=nE;}else{src[oi].estadoBT=nE;}
+    if(nE==='ASCENSO'){src[oi].anioAsc=document.getElementById('updAnio').value;src[oi].mesAsc=document.getElementById('updMes').value;}
+  }
+  const labels={'ASCENSO':'Ascendió','PROCESO DE ASCENSO':'Pendiente de ascenso','DESAPROBADO':'No pasó entrevista','EN EVALUACION':'En evaluación','ASCENSO PENDIENTE':'Ascenso pendiente'};
+  const docId=BT_ALL.length?'bt_records':'records';
+  try{await fdb.collection('data').doc(docId).update({records:JSON.stringify(src),lastUpdated:firebase.firestore.FieldValue.serverTimestamp()});
+    await fdb.collection('changelog').add({dni:r.dni,nombre:r.nombre,nuevoEstado:labels[nE]||nE,
+      anio:nE==='ASCENSO'?document.getElementById('updAnio').value:'—',mes:nE==='ASCENSO'?document.getElementById('updMes').value:'—',
+      usuario:auth.currentUser.email,fecha:firebase.firestore.FieldValue.serverTimestamp()});
+    closeModal('updModal');renderBT();renderSumCards();loadLog();alert('✅ Estado actualizado: '+(labels[nE]||nE));
+  }catch(e){alert('Error: '+e.message);}}
+
+// CHANGELOG
+async function loadLog(){try{const snap=await fdb.collection('changelog').orderBy('fecha','desc').limit(200).get();
+  if(snap.empty){document.getElementById('logBody').innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:16px">Sin cambios</td></tr>';
+    document.getElementById('histB').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:16px">Sin historial</td></tr>';return;}
+  const entries=[];snap.forEach(doc=>{const d=doc.data();entries.push({id:doc.id,...d});});
+
+  // Detail log
+  let lh='';entries.forEach(e=>{const f=e.fecha?e.fecha.toDate().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    const stC={'Ascendió':'#2E8B57','En evaluación':'#D4A843','Pendiente de ascenso':'#E67E22','No pasó entrevista':'#C0392B'};
+    lh+='<tr><td style="font-size:9px">'+f+'</td><td style="font-size:9px">'+e.dni+'</td><td style="font-weight:600">'+e.nombre+'</td>';
+    lh+='<td><span style="color:'+(stC[e.nuevoEstado]||'var(--text)')+';font-weight:600">'+e.nuevoEstado+'</span></td>';
+    lh+='<td>'+e.anio+'</td><td>'+e.mes+'</td><td style="font-size:9px">'+e.usuario+'</td>';
+    lh+='<td><button class="bt-del" onclick="delLog(\''+e.id+'\')">✕</button></td></tr>';});
+  document.getElementById('logBody').innerHTML=lh;
+
+  // Monthly aggregation
+  const monthly={};entries.forEach(e=>{if(!e.fecha)return;const d=e.fecha.toDate();const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!monthly[key])monthly[key]={label:MF[d.getMonth()]+' '+d.getFullYear(),asc:0,eval:0,proc:0,noP:0,items:[]};
+    if(e.nuevoEstado==='Ascendió')monthly[key].asc++;else if(e.nuevoEstado==='En evaluación')monthly[key].eval++;
+    else if(e.nuevoEstado==='Pendiente de ascenso')monthly[key].proc++;else if(e.nuevoEstado==='No pasó entrevista')monthly[key].noP++;
+    monthly[key].items.push(e);});
+  const mKeys=Object.keys(monthly).sort().reverse();
+  let totA=0,totE=0,totP=0,totN=0;mKeys.forEach(k=>{const m=monthly[k];totA+=m.asc;totE+=m.eval;totP+=m.proc;totN+=m.noP;});
+
+  // Sum cards
+  const lsc=document.getElementById('logSumCards');if(lsc)lsc.innerHTML=
+    '<div class="sum-c" style="border-left-color:#1A1A1A"><div class="n">'+(totA+totE+totP+totN)+'</div><div class="l">Total movimientos</div></div>'+
+    '<div class="sum-c" style="border-left-color:#2E8B57"><div class="n" style="color:#2E8B57">'+totA+'</div><div class="l">Ascendieron</div></div>'+
+    '<div class="sum-c" style="border-left-color:#D4A843"><div class="n" style="color:#D4A843">'+totE+'</div><div class="l">En evaluación</div></div>'+
+    '<div class="sum-c" style="border-left-color:#E67E22"><div class="n" style="color:#E67E22">'+totP+'</div><div class="l">Proceso ascenso</div></div>';
+
+  let hh='';mKeys.forEach(k=>{const m=monthly[k];const t=m.asc+m.eval+m.proc+m.noP;
+    hh+='<tr><td>'+m.label.charAt(0).toUpperCase()+m.label.slice(1)+'</td>';
+    hh+='<td><span class="hist-num" style="color:#2E8B57">'+m.asc+'</span></td>';
+    hh+='<td><span class="hist-num" style="color:#D4A843">'+m.eval+'</span></td>';
+    hh+='<td><span class="hist-num" style="color:#E67E22">'+m.proc+'</span></td>';
+    hh+='<td><span class="hist-num" style="color:#C0392B">'+m.noP+'</span></td>';
+    hh+='<td><span class="hist-click" onclick="showMonthDet(\''+k+'\')">'+t+'</span></td></tr>';});
+  document.getElementById('histB').innerHTML=hh;
+
+  window._monthlyData=monthly;
+}catch(e){console.error(e);}}
+
+function showMonthDet(key){const m=window._monthlyData?.[key];if(!m)return;
+  document.getElementById('detTitle').textContent='Movimientos — '+m.label.charAt(0).toUpperCase()+m.label.slice(1);
+  const stC={'Ascendió':'#2E8B57','En evaluación':'#D4A843','Pendiente de ascenso':'#E67E22','No pasó entrevista':'#C0392B'};
+  let h='<table class="bt-tbl"><thead><tr><th>DNI</th><th>Nombre</th><th>Estado</th><th>Año</th><th>Mes</th></tr></thead><tbody>';
+  m.items.forEach(e=>{h+='<tr><td>'+e.dni+'</td><td style="font-weight:600">'+e.nombre+'</td><td><span style="color:'+(stC[e.nuevoEstado]||'var(--text)')+';font-weight:600">'+e.nuevoEstado+'</span></td><td>'+e.anio+'</td><td>'+e.mes+'</td></tr>';});
+  h+='</tbody></table>';document.getElementById('detContent').innerHTML=h;document.getElementById('detModal').classList.add('show');}
+
+async function delLog(id){if(!confirm('¿Eliminar este registro?'))return;
+  try{await fdb.collection('changelog').doc(id).delete();loadLog();alert('✅ Registro eliminado');}catch(e){alert('Error: '+e.message);}}
+
+// DRAG & DROP
+const uz=document.querySelector('.upload-zone');
+if(uz){uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='#2bd5c4';});
+  uz.addEventListener('dragleave',()=>{uz.style.borderColor='';});
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.style.borderColor='';const f=e.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('excelIn').files=dt.files;handleUpload(document.getElementById('excelIn'));}});}
+
+window.addEventListener('DOMContentLoaded',loadData);
+</script>
+</body></html>
